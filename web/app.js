@@ -66,7 +66,13 @@ async function init() {
     $("config-warning").hidden = false;
     return;
   }
-  db = supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY);
+  db = supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY, {
+    global: {
+      // Forzamos "no-store" para que el navegador NUNCA sirva respuestas
+      // viejas en caché (era lo que hacía que el banner no se actualizara).
+      fetch: (input, init = {}) => fetch(input, { ...init, cache: "no-store" }),
+    },
+  });
 
   const { data } = await db.auth.getSession();
   renderSesion(data.session);
@@ -181,8 +187,11 @@ async function guardarTelegram(e) {
 
   if (error) return aviso("No se pudo guardar: " + error.message, "error");
   perfil = { ...perfil, nombre, chat_id };
+  // Actualizamos la interfaz directamente con lo recién guardado, sin
+  // depender de una relectura (que podría venir cacheada por el navegador).
+  $("userbar-nombre").textContent = "👤 " + (perfil.nombre || usuario.email);
+  $("telegram-banner").hidden = !!perfil.chat_id;
   cerrarHojas();
-  cargarPerfil();
   aviso("Telegram vinculado ✓", "ok");
 }
 
