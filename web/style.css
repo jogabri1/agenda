@@ -16,6 +16,11 @@
 
 * { box-sizing: border-box; }
 
+/* El atributo `hidden` debe ocultar SIEMPRE. Algunas clases con
+   `display: flex` lo pisaban y hacían que el banner no desapareciera
+   aunque la app lo marcara como oculto. */
+[hidden] { display: none !important; }
+
 html, body {
   margin: 0;
   padding: 0;
