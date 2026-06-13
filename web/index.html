@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Agenda</title>
+
+  <!-- PWA: hace que sea "instalable" en el iPhone -->
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#2f4251" />
+
+  <!-- iOS: icono de la pantalla de inicio y modo pantalla completa -->
+  <link rel="apple-touch-icon" href="icons/icon-180.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Agenda" />
+
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- Aviso si falta configurar Supabase -->
+  <div id="config-warning" class="banner banner-error" hidden>
+    ⚠️ Falta configurar la conexión. Abre <code>web/config.js</code> y pega tu URL y clave de Supabase.
+  </div>
+
+  <!-- Aviso de estado (errores/confirmaciones) -->
+  <div id="status" class="banner" hidden></div>
+
+  <!-- ════════ PANTALLA DE LOGIN ════════ -->
+  <section id="auth-view" class="auth" hidden>
+    <div class="auth-card">
+      <div class="auth-logo"><img src="brand/isotipo.png" alt="SONKO BUILDER" /></div>
+      <h1>Agenda</h1>
+      <p id="auth-sub">Inicia sesión para ver tu agenda</p>
+
+      <form id="form-auth">
+        <div id="campo-nombre-wrap" hidden>
+          <label for="auth-nombre">Tu nombre</label>
+          <input id="auth-nombre" type="text" autocomplete="name" placeholder="Ej: María" />
+        </div>
+
+        <label for="auth-email">Email</label>
+        <input id="auth-email" type="email" autocomplete="email" required placeholder="tucorreo@ejemplo.com" />
+
+        <label for="auth-pass">Contraseña</label>
+        <input id="auth-pass" type="password" autocomplete="current-password" required minlength="6" placeholder="Mínimo 6 caracteres" />
+
+        <button type="submit" id="btn-auth" class="btn-primary">Entrar</button>
+      </form>
+
+      <p class="auth-toggle">
+        <span id="auth-toggle-text">¿No tienes cuenta?</span>
+        <button type="button" id="btn-toggle-auth" class="link">Crear cuenta</button>
+      </p>
+    </div>
+  </section>
+
+  <!-- ════════ APP (visible tras iniciar sesión) ════════ -->
+  <div id="app-view" hidden>
+    <header class="app-header">
+      <h1>📅 Agenda</h1>
+      <button id="btn-nuevo" class="btn-primary" type="button">+ Nuevo</button>
+    </header>
+
+    <div class="userbar">
+      <span id="userbar-nombre">👤</span>
+      <span class="userbar-acciones">
+        <button id="btn-telegram" class="link" type="button">🔔 Mi Telegram</button>
+        <button id="btn-salir" class="link" type="button">Salir</button>
+      </span>
+    </div>
+
+    <!-- Aviso si aún no vinculó Telegram -->
+    <div id="telegram-banner" class="banner banner-warn" hidden>
+      🔔 Aún no recibes avisos por Telegram.
+      <button id="btn-vincular" class="link" type="button">Vincular ahora</button>
+    </div>
+
+    <main id="lista" class="lista">
+      <p class="vacio" id="cargando">Cargando agenda…</p>
+    </main>
+  </div>
+
+  <!-- ════════ Hoja inferior: añadir / editar evento ════════ -->
+  <div id="overlay" class="overlay" hidden></div>
+  <section id="sheet" class="sheet" hidden aria-label="Formulario de evento">
+    <div class="sheet-handle"></div>
+    <h2 id="form-titulo">Nuevo evento</h2>
+    <form id="form-evento">
+      <input type="hidden" id="evento-id" />
+
+      <label for="campo-titulo">Evento *</label>
+      <input id="campo-titulo" type="text" required placeholder="Ej: Reunión con la tutora" />
+
+      <div class="fila">
+        <div>
+          <label for="campo-fecha">Día *</label>
+          <input id="campo-fecha" type="date" required />
+        </div>
+        <div>
+          <label for="campo-hora">Hora *</label>
+          <input id="campo-hora" type="time" required />
+        </div>
+      </div>
+
+      <label for="campo-categoria">Tipo</label>
+      <select id="campo-categoria">
+        <option value="reunión">Reunión</option>
+        <option value="tarea hijos">Tarea de los hijos</option>
+        <option value="tarea">Tarea</option>
+        <option value="personal">Personal</option>
+        <option value="otro">Otro</option>
+      </select>
+
+      <label for="campo-notas">Notas (opcional)</label>
+      <textarea id="campo-notas" rows="3" placeholder="Ej: llevar el cuaderno"></textarea>
+
+      <div class="acciones">
+        <button type="button" id="btn-cancelar" class="btn-ghost">Cancelar</button>
+        <button type="submit" id="btn-guardar" class="btn-primary">Guardar</button>
+      </div>
+    </form>
+  </section>
+
+  <!-- ════════ Hoja inferior: vincular Telegram ════════ -->
+  <section id="sheet-telegram" class="sheet" hidden aria-label="Vincular Telegram">
+    <div class="sheet-handle"></div>
+    <h2>🔔 Recibir avisos por Telegram</h2>
+    <ol class="pasos">
+      <li>Abre en Telegram el bot de la familia y pulsa <b>Iniciar / Start</b>.</li>
+      <li>Abre <b>@userinfobot</b> en Telegram: te responderá con tu número (<i>Id</i>).</li>
+      <li>Copia ese número y pégalo aquí abajo.</li>
+    </ol>
+    <form id="form-telegram">
+      <label for="tg-nombre">Tu nombre</label>
+      <input id="tg-nombre" type="text" placeholder="Ej: María" />
+
+      <label for="tg-chatid">Tu número de Telegram (chat id)</label>
+      <input id="tg-chatid" type="text" inputmode="numeric" placeholder="Ej: 987654321" />
+
+      <div class="acciones">
+        <button type="button" id="btn-tg-cancelar" class="btn-ghost">Cancelar</button>
+        <button type="submit" id="btn-tg-guardar" class="btn-primary">Guardar</button>
+      </div>
+    </form>
+  </section>
+
+  <!-- 1) Cliente de Supabase desde CDN (sin instalar nada) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- 2) Tus claves (las pegas tú) -->
+  <script src="config.js"></script>
+  <!-- 3) La lógica de la app -->
+  <script src="app.js"></script>
+</body>
+</html>

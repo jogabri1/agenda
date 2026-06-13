@@ -1,0 +1,27 @@
+name: Resumen de la manana
+
+on:
+  schedule:
+    # 07:00 en zona UTC-5 (Perú/Colombia/Ecuador) = 12:00 UTC.
+    # Estos países no usan horario de verano, así que no cambia en todo el año.
+    # GitHub usa el cron en UTC; si algún día cambias de zona u hora, ajusta este valor.
+    - cron: "0 12 * * *"
+  workflow_dispatch: {} # permite ejecutarlo a mano desde la pestaña Actions
+
+jobs:
+  enviar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+      - run: npm ci
+      - run: node scripts/send-morning.js
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TIMEZONE: ${{ vars.TIMEZONE }}
+          NEXT_DAYS: ${{ vars.NEXT_DAYS }}

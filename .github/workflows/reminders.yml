@@ -1,0 +1,25 @@
+name: Recordatorios (5h / 3h / 1h)
+
+on:
+  schedule:
+    # Cada 15 minutos. OJO: GitHub usa horario UTC, pero no importa aquí
+    # porque el script convierte a tu zona horaria (variable TIMEZONE).
+    - cron: "*/15 * * * *"
+  workflow_dispatch: {} # permite ejecutarlo a mano desde la pestaña Actions
+
+jobs:
+  enviar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+      - run: npm ci
+      - run: node scripts/send-reminders.js
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TIMEZONE: ${{ vars.TIMEZONE }}

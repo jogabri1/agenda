@@ -1,0 +1,9 @@
+# Dependencias
+node_modules/
+
+# Secretos locales (NUNCA subir a GitHub)
+.env
+
+# Sistema
+.DS_Store
+Thumbs.db
