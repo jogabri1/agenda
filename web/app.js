@@ -70,7 +70,12 @@ async function init() {
 
   const { data } = await db.auth.getSession();
   renderSesion(data.session);
-  db.auth.onAuthStateChange((_evento, session) => renderSesion(session));
+  // Importante: diferimos con setTimeout para NO llamar a Supabase dentro
+  // del callback de onAuthStateChange (evita un bloqueo/deadlock conocido
+  // de supabase-js que hacía que el login se quedara colgado sin entrar).
+  db.auth.onAuthStateChange((_evento, session) => {
+    setTimeout(() => renderSesion(session), 0);
+  });
 
   registrarServiceWorker();
 }
