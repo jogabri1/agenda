@@ -123,6 +123,8 @@ async function enviarAuth(e) {
       if (!data.session) {
         aviso("Cuenta creada. Revisa tu email para confirmarla y luego inicia sesión.", "ok");
         alternarModo(); // vuelve a modo "Entrar"
+      } else {
+        aviso("¡Cuenta creada! Bienvenido/a 🎉", "ok");
       }
     } else {
       const { error } = await db.auth.signInWithPassword({ email, password: pass });
@@ -305,12 +307,19 @@ async function borrar(ev) {
   cargar();
 }
 
-// ───────── Service worker ─────────
+// ───────── Limpieza de service worker ─────────
+// Ya no usamos service worker (causaba cachés que congelaban versiones viejas).
+// Desregistramos cualquiera que hubiera quedado y borramos sus cachés, para
+// que la app cargue siempre la última versión desde la red.
 function registrarServiceWorker() {
   if ("serviceWorker" in navigator) {
-    window.addEventListener("load", () => {
-      navigator.serviceWorker.register("service-worker.js").catch(() => {});
-    });
+    navigator.serviceWorker
+      .getRegistrations()
+      .then((regs) => regs.forEach((r) => r.unregister()))
+      .catch(() => {});
+  }
+  if (window.caches) {
+    caches.keys().then((ks) => ks.forEach((k) => caches.delete(k))).catch(() => {});
   }
 }
 
