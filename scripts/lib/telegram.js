@@ -1,5 +1,14 @@
-// Envía un mensaje de texto a un chat de Telegram concreto.
+// Envía un mensaje a un chat de Telegram concreto (formato HTML).
 // Usa la API de bots (gratuita): https://core.telegram.org/bots/api
+
+// Escapa el texto que escribe el usuario para que sea seguro en HTML
+// (Telegram permite <b>, <i>, etc.; hay que escapar < > &).
+function esc(s) {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
 
 async function sendTelegram(chatId, text) {
   const token = process.env.TELEGRAM_BOT_TOKEN;
@@ -12,7 +21,7 @@ async function sendTelegram(chatId, text) {
     body: JSON.stringify({
       chat_id: chatId,
       text,
-      parse_mode: "Markdown",
+      parse_mode: "HTML",
       disable_web_page_preview: true,
     }),
   });
@@ -24,4 +33,4 @@ async function sendTelegram(chatId, text) {
   return data;
 }
 
-module.exports = { sendTelegram };
+module.exports = { sendTelegram, esc };

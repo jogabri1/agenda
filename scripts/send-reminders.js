@@ -12,7 +12,7 @@
 // ───────────────────────────────────────────────────────────────
 
 const { getClient } = require("./lib/supabase");
-const { sendTelegram } = require("./lib/telegram");
+const { sendTelegram, esc } = require("./lib/telegram");
 const { ahora, momentoEvento, faltaTexto } = require("./lib/time");
 
 const FRANJAS = [
@@ -60,8 +60,8 @@ async function main() {
     if (!franja || ev[franja.flag]) continue; // sin franja, o ya enviada
 
     const cuando = `${prefijoDia(evDt, now)} a las ${evDt.toFormat("HH:mm")}`;
-    // Mensaje corto: solo el intervalo + el título + la hora (sin categoría ni notas).
-    const msg = `⏰ Faltan ~${faltaTexto(minutos)} para:\n*${ev.titulo}*\n🗓️ ${cuando}`;
+    // Mensaje corto: intervalo + título (en NEGRITA) + hora. Sin categoría ni notas.
+    const msg = `⏰ Faltan ~${faltaTexto(minutos)} para:\n<b>${esc(ev.titulo)}</b>\n🗓️ ${cuando}`;
 
     await sendTelegram(chatId, msg);
     const { error: upErr } = await db

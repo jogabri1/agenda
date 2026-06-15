@@ -7,14 +7,15 @@
 // ───────────────────────────────────────────────────────────────
 
 const { getClient } = require("./lib/supabase");
-const { sendTelegram } = require("./lib/telegram");
+const { sendTelegram, esc } = require("./lib/telegram");
 const { ahora, momentoEvento, fechaEspanol } = require("./lib/time");
 
 const NEXT_DAYS = parseInt(process.env.NEXT_DAYS || "3", 10);
 
 function lineaEvento(ev) {
-  let linea = `• ${(ev.hora || "").slice(0, 5)} — ${ev.titulo}`;
-  if (ev.notas) linea += `\n   📝 ${ev.notas}`;
+  // Título en NEGRITA (<b>); el resto del texto del usuario se escapa.
+  let linea = `• ${(ev.hora || "").slice(0, 5)} — <b>${esc(ev.titulo)}</b>`;
+  if (ev.notas) linea += `\n   📝 ${esc(ev.notas)}`;
   return linea;
 }
 
@@ -23,19 +24,19 @@ function construirMensaje(now, eventos, nombre) {
   const deHoy = eventos.filter((e) => e.fecha === hoy);
   const proximos = eventos.filter((e) => e.fecha !== hoy);
 
-  const saludo = nombre ? `¡Buenos días, ${nombre}!` : "¡Buenos días!";
-  let msg = `☀️ *${saludo}*\n\n`;
-  msg += `*Agenda de hoy (${fechaEspanol(now)}):*\n`;
-  msg += deHoy.length === 0 ? "_Hoy no tienes nada agendado._\n" : deHoy.map(lineaEvento).join("\n") + "\n";
+  const saludo = nombre ? `¡Buenos días, ${esc(nombre)}!` : "¡Buenos días!";
+  let msg = `☀️ <b>${saludo}</b>\n\n`;
+  msg += `<b>Agenda de hoy (${fechaEspanol(now)}):</b>\n`;
+  msg += deHoy.length === 0 ? "<i>Hoy no tienes nada agendado.</i>\n" : deHoy.map(lineaEvento).join("\n") + "\n";
 
   if (proximos.length > 0) {
-    msg += `\n📅 *Próximos días:*\n`;
+    msg += `\n📅 <b>Próximos días:</b>\n`;
     let fechaActual = null;
     for (const ev of proximos) {
       if (ev.fecha !== fechaActual) {
         fechaActual = ev.fecha;
         const etiqueta = fechaEspanol(momentoEvento(ev));
-        msg += `\n*${etiqueta.charAt(0).toUpperCase() + etiqueta.slice(1)}:*\n`;
+        msg += `\n<b>${etiqueta.charAt(0).toUpperCase() + etiqueta.slice(1)}:</b>\n`;
       }
       msg += lineaEvento(ev) + "\n";
     }
