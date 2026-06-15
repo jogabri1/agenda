@@ -2,10 +2,9 @@ name: Resumen de la manana
 
 on:
   schedule:
-    # 07:00 en zona UTC-5 (Perú/Colombia/Ecuador) = 12:00 UTC.
-    # Estos países no usan horario de verano, así que no cambia en todo el año.
-    # GitHub usa el cron en UTC; si algún día cambias de zona u hora, ajusta este valor.
-    - cron: "0 12 * * *"
+    # 07:05 Perú (UTC-5) = 12:05 UTC. Usamos el minuto :05 (no :00) porque GitHub
+    # retrasa mucho más los crons en el minuto en punto. Perú no usa horario de verano.
+    - cron: "5 12 * * *"
   workflow_dispatch: {} # permite ejecutarlo a mano desde la pestaña Actions
 
 jobs:

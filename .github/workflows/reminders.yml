@@ -2,9 +2,10 @@ name: Recordatorios (5h / 3h / 1h)
 
 on:
   schedule:
-    # Cada 15 minutos. OJO: GitHub usa horario UTC, pero no importa aquí
-    # porque el script convierte a tu zona horaria (variable TIMEZONE).
-    - cron: "*/15 * * * *"
+    # Cada ~15 minutos, pero en minutos IMPARES (no :00/:15/:30/:45) porque GitHub
+    # retrasa/salta más los crons en horas "redondas" por la mucha carga.
+    # La hora la calcula el script según TIMEZONE; aquí el cron es en UTC.
+    - cron: "8,23,38,53 * * * *"
   workflow_dispatch: {} # permite ejecutarlo a mano desde la pestaña Actions
 
 jobs:

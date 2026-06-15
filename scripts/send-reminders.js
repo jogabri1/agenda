@@ -60,9 +60,8 @@ async function main() {
     if (!franja || ev[franja.flag]) continue; // sin franja, o ya enviada
 
     const cuando = `${prefijoDia(evDt, now)} a las ${evDt.toFormat("HH:mm")}`;
-    let msg = `⏰ *Recordatorio*\nFaltan ~${faltaTexto(minutos)} para:\n*${ev.titulo}*\n🗓️ ${cuando}`;
-    if (ev.categoria) msg += `\n🏷️ ${ev.categoria}`;
-    if (ev.notas) msg += `\n📝 ${ev.notas}`;
+    // Mensaje corto: solo el intervalo + el título + la hora (sin categoría ni notas).
+    const msg = `⏰ Faltan ~${faltaTexto(minutos)} para:\n*${ev.titulo}*\n🗓️ ${cuando}`;
 
     await sendTelegram(chatId, msg);
     const { error: upErr } = await db
