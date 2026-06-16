@@ -15,10 +15,11 @@ const { getClient } = require("./lib/supabase");
 const { sendTelegram, esc } = require("./lib/telegram");
 const { ahora, momentoEvento, faltaTexto } = require("./lib/time");
 
+// Avisos: 3 h antes, 1 h antes y A LA HORA del evento.
 const FRANJAS = [
-  { flag: "sent_5h", maxMin: 300, minMin: 180 },
-  { flag: "sent_3h", maxMin: 180, minMin: 60 },
-  { flag: "sent_1h", maxMin: 60, minMin: 0 },
+  { flag: "sent_3h", maxMin: 180, minMin: 60 },               // ~3 h antes
+  { flag: "sent_1h", maxMin: 60, minMin: 15 },                // ~1 h antes
+  { flag: "sent_now", maxMin: 15, minMin: -1, ahora: true },  // a la hora (o muy cerca)
 ];
 
 function prefijoDia(evDt, ahoraDt) {
@@ -44,7 +45,7 @@ async function main() {
     .from("events")
     .select("*")
     .in("fecha", [hoy, manana])
-    .or("sent_5h.eq.false,sent_3h.eq.false,sent_1h.eq.false");
+    .or("sent_3h.eq.false,sent_1h.eq.false,sent_now.eq.false");
   if (error) throw error;
 
   let enviados = 0;
@@ -60,8 +61,10 @@ async function main() {
     if (!franja || ev[franja.flag]) continue; // sin franja, o ya enviada
 
     const cuando = `${prefijoDia(evDt, now)} a las ${evDt.toFormat("HH:mm")}`;
-    // Mensaje corto: intervalo + título (en NEGRITA) + hora. Sin categoría ni notas.
-    const msg = `⏰ Faltan ~${faltaTexto(minutos)} para:\n<b>${esc(ev.titulo)}</b>\n🗓️ ${cuando}`;
+    // Mensaje corto (título en negrita + hora). Si es "a la hora", texto distinto.
+    const msg = franja.ahora
+      ? `🔔 ¡Es la hora de:\n<b>${esc(ev.titulo)}</b>\n🗓️ ${cuando}`
+      : `⏰ Faltan ~${faltaTexto(minutos)} para:\n<b>${esc(ev.titulo)}</b>\n🗓️ ${cuando}`;
 
     await sendTelegram(chatId, msg);
     const { error: upErr } = await db

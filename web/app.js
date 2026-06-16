@@ -292,9 +292,9 @@ async function guardarEvento(e) {
   let error;
   if (id) {
     // Al editar: si cambió fecha/hora, reiniciamos los avisos para que se reevalúen.
-    datos.sent_5h = false;
     datos.sent_3h = false;
     datos.sent_1h = false;
+    datos.sent_now = false;
     ({ error } = await db.from("events").update(datos).eq("id", id));
   } else {
     // user_id lo pone la base de datos por defecto (auth.uid()).
