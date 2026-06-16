@@ -60,11 +60,10 @@ async function main() {
     const franja = FRANJAS.find((f) => minutos > f.minMin && minutos <= f.maxMin);
     if (!franja || ev[franja.flag]) continue; // sin franja, o ya enviada
 
-    const cuando = `${prefijoDia(evDt, now)} a las ${evDt.toFormat("HH:mm")}`;
-    // Mensaje corto (título en negrita + hora). Si es "a la hora", texto distinto.
+    // Mensaje muy corto: solo el aviso + el título en negrita.
     const msg = franja.ahora
-      ? `🔔 ¡Es la hora de:\n<b>${esc(ev.titulo)}</b>\n🗓️ ${cuando}`
-      : `⏰ Faltan ~${faltaTexto(minutos)} para:\n<b>${esc(ev.titulo)}</b>\n🗓️ ${cuando}`;
+      ? `🔔 ¡Es la hora de: <b>${esc(ev.titulo)}</b>`
+      : `⏰ Faltan ~${faltaTexto(minutos)} para: <b>${esc(ev.titulo)}</b>`;
 
     await sendTelegram(chatId, msg);
     const { error: upErr } = await db
