@@ -1,12 +1,10 @@
-name: Recordatorios (5h / 3h / 1h)
+name: Recordatorios (3h / 1h / a la hora)
 
 on:
-  schedule:
-    # Cada ~15 minutos, pero en minutos IMPARES (no :00/:15/:30/:45) porque GitHub
-    # retrasa/salta más los crons en horas "redondas" por la mucha carga.
-    # La hora la calcula el script según TIMEZONE; aquí el cron es en UTC.
-    - cron: "8,23,38,53 * * * *"
-  workflow_dispatch: {} # permite ejecutarlo a mano desde la pestaña Actions
+  # Lo dispara cron-job.org (reloj fiable) cada 15 min vía API, y también se puede
+  # lanzar a mano desde la pestaña Actions. Ya NO usamos el cron de GitHub porque
+  # en el plan gratis no es puntual (se retrasa y se salta ejecuciones).
+  workflow_dispatch: {}
 
 jobs:
   enviar:

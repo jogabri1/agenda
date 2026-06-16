@@ -1,11 +1,9 @@
 name: Resumen de la manana
 
 on:
-  schedule:
-    # 07:05 Perú (UTC-5) = 12:05 UTC. Usamos el minuto :05 (no :00) porque GitHub
-    # retrasa mucho más los crons en el minuto en punto. Perú no usa horario de verano.
-    - cron: "5 12 * * *"
-  workflow_dispatch: {} # permite ejecutarlo a mano desde la pestaña Actions
+  # Lo dispara cron-job.org (reloj fiable) cada día a las 07:05 (hora Perú) vía API,
+  # y también se puede lanzar a mano. Ya NO usamos el cron de GitHub (no es puntual).
+  workflow_dispatch: {}
 
 jobs:
   enviar:
