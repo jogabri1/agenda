@@ -1,12 +1,12 @@
 // ───────────────────────────────────────────────────────────────
-//  RECORDATORIOS previos: avisa 5 h, 3 h y 1 h antes de cada evento.
+//  RECORDATORIOS previos: avisa 1 h, 20 min antes y A LA HORA de cada evento.
 //  Multi-usuario: cada aviso se envía al Telegram de SU dueño.
-//  Se ejecuta en GitHub Actions cada ~15 minutos.
+//  Lo dispara cron-job.org cada ~5 minutos (así el aviso "a la hora" es exacto).
 //
 //  Lógica por FRANJAS (evita avisos erróneos y duplicados):
-//    · franja 5h:  180 < faltan ≤ 300 min  → marca sent_5h
-//    · franja 3h:   60 < faltan ≤ 180 min  → marca sent_3h
-//    · franja 1h:    0 < faltan ≤  60 min  → marca sent_1h
+//    · franja 1h:   53 < faltan ≤ 67 min  → marca sent_1h    (~1 h antes)
+//    · franja 20m:  13 < faltan ≤ 27 min  → marca sent_20m   (~20 min antes)
+//    · franja now:  -3 < faltan ≤  7 min  → marca sent_now   (a la hora exacta)
 //  Cada franja se envía UNA sola vez gracias a las marcas sent_*.
 //  El mensaje muestra el tiempo restante REAL, así nunca miente.
 // ───────────────────────────────────────────────────────────────
@@ -15,11 +15,13 @@ const { getClient } = require("./lib/supabase");
 const { sendTelegram, esc } = require("./lib/telegram");
 const { ahora, momentoEvento, faltaTexto } = require("./lib/time");
 
-// Avisos: 3 h antes, 1 h antes y A LA HORA del evento.
+// Avisos: 1 h antes, 20 min antes y A LA HORA del evento.
+// Ventanas ceñidas a 60 / 20 / 0 min, con ancho ≥ 5 min para que el
+// cron de 5 min siempre las capture (aunque haya algo de retraso).
 const FRANJAS = [
-  { flag: "sent_3h", maxMin: 180, minMin: 60 },               // ~3 h antes
-  { flag: "sent_1h", maxMin: 60, minMin: 15 },                // ~1 h antes
-  { flag: "sent_now", maxMin: 15, minMin: -1, ahora: true },  // a la hora (o muy cerca)
+  { flag: "sent_1h",  maxMin: 67, minMin: 53 },               // ~1 h antes
+  { flag: "sent_20m", maxMin: 27, minMin: 13 },               // ~20 min antes
+  { flag: "sent_now", maxMin: 7,  minMin: -3, ahora: true },  // a la hora exacta
 ];
 
 function prefijoDia(evDt, ahoraDt) {
@@ -45,7 +47,7 @@ async function main() {
     .from("events")
     .select("*")
     .in("fecha", [hoy, manana])
-    .or("sent_3h.eq.false,sent_1h.eq.false,sent_now.eq.false");
+    .or("sent_1h.eq.false,sent_20m.eq.false,sent_now.eq.false");
   if (error) throw error;
 
   let enviados = 0;

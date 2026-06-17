@@ -57,8 +57,8 @@ create table if not exists public.events (
   hora        time not null,
   notas       text,
   categoria   text default 'reunión',
-  sent_3h     boolean not null default false,   -- aviso "3 h antes" enviado
   sent_1h     boolean not null default false,   -- aviso "1 h antes" enviado
+  sent_20m    boolean not null default false,   -- aviso "20 min antes" enviado
   sent_now    boolean not null default false,   -- aviso "a la hora" enviado
   created_at  timestamptz not null default now()
 );
