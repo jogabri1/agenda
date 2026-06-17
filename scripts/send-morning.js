@@ -13,8 +13,8 @@ const { ahora, momentoEvento, fechaEspanol } = require("./lib/time");
 const NEXT_DAYS = parseInt(process.env.NEXT_DAYS || "3", 10);
 
 function lineaEvento(ev) {
-  // Título en NEGRITA (<b>); el resto del texto del usuario se escapa.
-  let linea = `• ${(ev.hora || "").slice(0, 5)} — <b>${esc(ev.titulo)}</b>`;
+  // Hora y título en NEGRITA (<b>); el resto del texto del usuario se escapa.
+  let linea = `• <b>${(ev.hora || "").slice(0, 5)}</b> — <b>${esc(ev.titulo)}</b>`;
   if (ev.notas) linea += `\n   📝 ${esc(ev.notas)}`;
   return linea;
 }
