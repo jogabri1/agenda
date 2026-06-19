@@ -19,7 +19,7 @@ function lineaEvento(ev) {
   return linea;
 }
 
-function construirMensaje(now, eventos, nombre) {
+function construirMensaje(now, eventos, nombre, pendientes = []) {
   const hoy = now.toISODate();
   const deHoy = eventos.filter((e) => e.fecha === hoy);
   const proximos = eventos.filter((e) => e.fecha !== hoy);
@@ -41,6 +41,12 @@ function construirMensaje(now, eventos, nombre) {
       msg += lineaEvento(ev) + "\n";
     }
   }
+  // Pendientes (sin fecha): se recuerdan cada mañana hasta agendarlos o borrarlos.
+  if (pendientes.length > 0) {
+    msg += `\n📌 <b>Pendientes:</b>\n`;
+    msg += pendientes.map((p) => `• <b>${esc(p.titulo)}</b>`).join("\n") + "\n";
+  }
+
   return { msg: msg.trim(), nHoy: deHoy.length, nProx: proximos.length };
 }
 
@@ -69,10 +75,19 @@ async function main() {
       .order("hora", { ascending: true });
     if (error) throw error;
 
-    const { msg, nHoy, nProx } = construirMensaje(now, eventos || [], perfil.nombre);
+    // Pendientes (sin fecha) de esa persona, para recordárselos cada mañana.
+    const { data: pendientes, error: errP2 } = await db
+      .from("events")
+      .select("titulo")
+      .eq("user_id", perfil.id)
+      .eq("pendiente", true)
+      .order("created_at", { ascending: true });
+    if (errP2) throw errP2;
+
+    const { msg, nHoy, nProx } = construirMensaje(now, eventos || [], perfil.nombre, pendientes || []);
     await sendTelegram(perfil.chat_id, msg);
     enviados++;
-    console.log(`Resumen → ${perfil.nombre || perfil.id} (chat ${perfil.chat_id}). Hoy: ${nHoy} · Próximos: ${nProx}.`);
+    console.log(`Resumen → ${perfil.nombre || perfil.id} (chat ${perfil.chat_id}). Hoy: ${nHoy} · Próximos: ${nProx} · Pendientes: ${(pendientes || []).length}.`);
   }
 
   console.log(`Listo. Resúmenes enviados: ${enviados}.`);

@@ -197,10 +197,11 @@ async function guardarTelegram(e) {
 
 // ═══════════════ EVENTOS ═══════════════
 async function cargar() {
+  // Traemos los eventos de hoy en adelante Y los pendientes (sin fecha).
   const { data, error } = await db
     .from("events")
     .select("*")
-    .gte("fecha", isoHoy())
+    .or(`fecha.gte.${isoHoy()},pendiente.is.true`)
     .order("fecha", { ascending: true })
     .order("hora", { ascending: true });
 
@@ -218,8 +219,21 @@ function pintar(eventos) {
     lista.innerHTML = '<p class="vacio">No hay nada en tu agenda todavía.<br>Pulsa “+ Nuevo” para empezar.</p>';
     return;
   }
+  const pendientes = eventos.filter((ev) => ev.pendiente);
+  const conFecha = eventos.filter((ev) => !ev.pendiente);
+
+  // Pendientes (sin fecha) arriba del todo.
+  if (pendientes.length > 0) {
+    const h = document.createElement("div");
+    h.className = "grupo-fecha pendientes";
+    h.textContent = "📌 Pendientes (sin fecha)";
+    lista.appendChild(h);
+    for (const ev of pendientes) lista.appendChild(tarjeta(ev));
+  }
+
+  // Eventos con fecha, agrupados por día.
   let fechaActual = null;
-  for (const ev of eventos) {
+  for (const ev of conFecha) {
     if (ev.fecha !== fechaActual) {
       fechaActual = ev.fecha;
       const { txt, hoy } = etiquetaFecha(ev.fecha);
@@ -237,8 +251,9 @@ function tarjeta(ev) {
   card.className = "evento";
   const notasHtml = ev.notas ? `<div class="notas">${escapar(ev.notas)}</div>` : "";
   const badge = ev.categoria ? `<span class="badge">${escapar(ev.categoria)}</span>` : "";
+  const horaTxt = ev.pendiente ? "📌" : horaCorta(ev.hora);
   card.innerHTML = `
-    <div class="hora">${horaCorta(ev.hora)}</div>
+    <div class="hora${ev.pendiente ? " pend" : ""}">${horaTxt}</div>
     <div class="cuerpo">
       <div class="titulo">${escapar(ev.titulo)}</div>
       ${notasHtml}
@@ -264,11 +279,25 @@ function abrirFormulario(ev) {
     $("campo-hora").value = horaCorta(ev.hora);
     $("campo-categoria").value = ev.categoria || "reunión";
     $("campo-notas").value = ev.notas || "";
+    $("campo-pendiente").checked = !!ev.pendiente;
   } else {
     $("campo-fecha").value = isoHoy();
+    $("campo-pendiente").checked = false;
   }
+  aplicarModoPendiente(); // apaga/enciende los campos según el interruptor
   $("sheet").hidden = false;
   $("overlay").hidden = false;
+}
+
+// Cuando el evento es "pendiente": solo queda el nombre. Apagamos día, hora,
+// tipo y notas (y les quitamos el `required` para que el formulario sí envíe).
+function aplicarModoPendiente() {
+  const p = $("campo-pendiente").checked;
+  for (const cid of ["campo-fecha", "campo-hora", "campo-categoria", "campo-notas"]) {
+    $(cid).disabled = p;
+  }
+  $("campo-fecha").required = !p;
+  $("campo-hora").required = !p;
 }
 
 function cerrarHojas() {
@@ -280,39 +309,48 @@ function cerrarHojas() {
 async function guardarEvento(e) {
   e.preventDefault();
   const id = $("evento-id").value;
-  const datos = {
-    titulo: $("campo-titulo").value.trim(),
-    fecha: $("campo-fecha").value,
-    hora: $("campo-hora").value,
-    categoria: $("campo-categoria").value,
-    notas: $("campo-notas").value.trim() || null,
-  };
+  const esPendiente = $("campo-pendiente").checked;
+
+  // Un "pendiente" solo lleva título (sin fecha, hora, tipo ni notas).
+  const datos = esPendiente
+    ? { titulo: $("campo-titulo").value.trim(), pendiente: true, fecha: null, hora: null, categoria: null, notas: null }
+    : {
+        titulo: $("campo-titulo").value.trim(),
+        pendiente: false,
+        fecha: $("campo-fecha").value,
+        hora: $("campo-hora").value,
+        categoria: $("campo-categoria").value,
+        notas: $("campo-notas").value.trim() || null,
+      };
 
   $("btn-guardar").disabled = true;
 
-  // Evitar dos eventos el mismo día a la misma hora.
+  // Evitar dos eventos el mismo día a la misma hora. Solo aplica a eventos con
+  // horario; los pendientes no tienen hora, así que no se validan.
   // La RLS limita la consulta a MIS eventos; comparamos con horaCorta para
   // que "10:00" del formulario iguale a "10:00:00" guardado en la base.
-  const { data: delDia, error: errChk } = await db
-    .from("events")
-    .select("id, hora")
-    .eq("fecha", datos.fecha);
-  if (errChk) {
-    $("btn-guardar").disabled = false;
-    return aviso("No se pudo validar el horario: " + errChk.message, "error");
-  }
-  const choca = (delDia || []).some((ev) => horaCorta(ev.hora) === datos.hora && ev.id !== id);
-  if (choca) {
-    $("btn-guardar").disabled = false;
-    alert(`Ya tienes un evento a las ${datos.hora} ese día. Cambia la hora o borra el otro.`);
-    return; // no se graba; el formulario queda abierto para corregir
+  if (!esPendiente) {
+    const { data: delDia, error: errChk } = await db
+      .from("events")
+      .select("id, hora")
+      .eq("fecha", datos.fecha);
+    if (errChk) {
+      $("btn-guardar").disabled = false;
+      return aviso("No se pudo validar el horario: " + errChk.message, "error");
+    }
+    const choca = (delDia || []).some((ev) => horaCorta(ev.hora) === datos.hora && ev.id !== id);
+    if (choca) {
+      $("btn-guardar").disabled = false;
+      alert(`Ya tienes un evento a las ${datos.hora} ese día. Cambia la hora o borra el otro.`);
+      return; // no se graba; el formulario queda abierto para corregir
+    }
   }
 
   let error;
   if (id) {
-    // Al editar: si cambió fecha/hora, reiniciamos los avisos para que se reevalúen.
-    datos.sent_3h = false;
+    // Al editar: reiniciamos los avisos para que se reevalúen con la nueva hora.
     datos.sent_1h = false;
+    datos.sent_20m = false;
     datos.sent_now = false;
     ({ error } = await db.from("events").update(datos).eq("id", id));
   } else {
@@ -362,6 +400,7 @@ $("btn-cancelar").onclick = cerrarHojas;
 $("btn-tg-cancelar").onclick = cerrarHojas;
 $("overlay").onclick = cerrarHojas;
 $("form-evento").onsubmit = guardarEvento;
+$("campo-pendiente").onchange = aplicarModoPendiente;
 $("form-telegram").onsubmit = guardarTelegram;
 
 init();

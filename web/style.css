@@ -287,3 +287,33 @@ form input:focus, form select:focus, form textarea:focus {
 /* Lista de pasos (vincular Telegram) */
 .pasos { margin: 4px 0 8px; padding-left: 20px; color: var(--texto); font-size: 14px; line-height: 1.5; }
 .pasos li { margin-bottom: 6px; }
+
+/* ───────── Pendientes (eventos sin fecha) ───────── */
+/* Interruptor "Es un pendiente" en el formulario */
+.check-pendiente {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 14px 0 2px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--texto);
+  cursor: pointer;
+}
+.check-pendiente input {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  accent-color: var(--acento);
+}
+/* Campos apagados cuando el evento es un pendiente */
+form input:disabled, form select:disabled, form textarea:disabled {
+  background: var(--acento-suave);
+  color: var(--texto-suave);
+  opacity: .7;
+  cursor: not-allowed;
+}
+/* Cabecera de la sección de pendientes en la lista */
+.grupo-fecha.pendientes { color: var(--acento-2); }
+/* El icono 📌 ocupa el sitio de la hora en las tarjetas de pendientes */
+.evento .hora.pend { font-size: 18px; }

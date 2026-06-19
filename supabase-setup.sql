@@ -53,10 +53,11 @@ create table if not exists public.events (
   id          uuid primary key default gen_random_uuid(),
   user_id     uuid not null default auth.uid() references auth.users(id) on delete cascade,
   titulo      text not null,
-  fecha       date not null,
-  hora        time not null,
+  fecha       date,                              -- NULL si es un "pendiente" (sin fecha)
+  hora        time,                              -- NULL si es un "pendiente"
   notas       text,
   categoria   text default 'reunión',
+  pendiente   boolean not null default false,    -- true = pendiente (sin fecha/hora)
   sent_1h     boolean not null default false,   -- aviso "1 h antes" enviado
   sent_20m    boolean not null default false,   -- aviso "20 min antes" enviado
   sent_now    boolean not null default false,   -- aviso "a la hora" enviado

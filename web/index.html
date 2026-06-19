@@ -92,6 +92,11 @@
       <label for="campo-titulo">Evento *</label>
       <input id="campo-titulo" type="text" required placeholder="Ej: Reunión con la tutora" />
 
+      <label class="check-pendiente">
+        <input type="checkbox" id="campo-pendiente" />
+        <span>📌 Es un pendiente (sin fecha)</span>
+      </label>
+
       <div class="fila">
         <div>
           <label for="campo-fecha">Día *</label>
@@ -150,6 +155,6 @@
   <!-- 2) Tus claves (las pegas tú) -->
   <script src="config.js"></script>
   <!-- 3) La lógica de la app (el ?v= fuerza al navegador a bajar la versión nueva) -->
-  <script src="app.js?v=2"></script>
+  <script src="app.js?v=3"></script>
 </body>
 </html>
