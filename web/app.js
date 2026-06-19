@@ -289,6 +289,25 @@ async function guardarEvento(e) {
   };
 
   $("btn-guardar").disabled = true;
+
+  // Evitar dos eventos el mismo día a la misma hora.
+  // La RLS limita la consulta a MIS eventos; comparamos con horaCorta para
+  // que "10:00" del formulario iguale a "10:00:00" guardado en la base.
+  const { data: delDia, error: errChk } = await db
+    .from("events")
+    .select("id, hora")
+    .eq("fecha", datos.fecha);
+  if (errChk) {
+    $("btn-guardar").disabled = false;
+    return aviso("No se pudo validar el horario: " + errChk.message, "error");
+  }
+  const choca = (delDia || []).some((ev) => horaCorta(ev.hora) === datos.hora && ev.id !== id);
+  if (choca) {
+    $("btn-guardar").disabled = false;
+    alert(`Ya tienes un evento a las ${datos.hora} ese día. Cambia la hora o borra el otro.`);
+    return; // no se graba; el formulario queda abierto para corregir
+  }
+
   let error;
   if (id) {
     // Al editar: si cambió fecha/hora, reiniciamos los avisos para que se reevalúen.
