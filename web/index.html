@@ -19,7 +19,10 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="apple-mobile-web-app-title" content="Agenda" />
 
-  <link rel="stylesheet" href="style.css?v=6" />
+  <!-- CSS crítico mínimo: mantiene oculto lo que debe estarlo mientras carga el
+       estilo real (evita un parpadeo al arrancar). El CSS completo lo carga el
+       "cargador de versión" del final, con la versión actual de version.txt. -->
+  <style>[hidden]{display:none!important}</style>
 </head>
 <body>
   <!-- Aviso si falta configurar Supabase -->
@@ -179,7 +182,29 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <!-- 2) Tus claves (las pegas tú) -->
   <script src="config.js"></script>
-  <!-- 3) La lógica de la app (el ?v= fuerza al navegador a bajar la versión nueva) -->
-  <script src="app.js?v=6"></script>
+  <!-- 3) CARGADOR DE VERSIÓN: lee version.txt (sin caché) y carga el CSS y el JS de
+       la app con ESA versión. Así, aunque el navegador tenga este index.html viejo
+       en caché, siempre baja la última versión publicada — sin reinstalar ni usar
+       incógnito. IMPORTANTE: este index.html ya NO cambia en cada actualización;
+       para publicar cambios basta con subir el número de version.txt (y editar
+       app.js / style.css). -->
+  <script>
+    (function () {
+      function cargar(version) {
+        var v = String(version || "0").trim() || "0";
+        var css = document.createElement("link");
+        css.rel = "stylesheet";
+        css.href = "style.css?v=" + v;
+        document.head.appendChild(css);
+        var js = document.createElement("script");
+        js.src = "app.js?v=" + v;
+        document.body.appendChild(js);
+      }
+      fetch("version.txt?t=" + Date.now(), { cache: "no-store" })
+        .then(function (r) { return r.text(); })
+        .then(cargar)
+        .catch(function () { cargar("0"); }); // sin red: carga igual para no romper
+    })();
+  </script>
 </body>
 </html>
