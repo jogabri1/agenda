@@ -382,9 +382,14 @@ function aplicarModoPendiente() {
   aplicarModoRepite();
 }
 
-// Muestra los campos "cada N días" / "hasta" solo si el evento se repite.
+// Muestra los días/"hasta" si el evento se repite y, en ese caso, oculta el campo
+// "Día": una serie no tiene una fecha concreta, arranca desde hoy en los días marcados.
 function aplicarModoRepite() {
-  $("repetir-campos").hidden = !$("campo-repite").checked;
+  const r = $("campo-repite").checked;
+  const p = $("campo-pendiente").checked;
+  $("repetir-campos").hidden = !r;
+  $("campo-fecha-wrap").hidden = r;
+  $("campo-fecha").required = !p && !r; // no se pide fecha si es pendiente o si se repite
 }
 
 function cerrarHojas() {
@@ -416,7 +421,9 @@ async function guardarEvento(e) {
     : {
         titulo: $("campo-titulo").value.trim(),
         pendiente: false,
-        fecha: $("campo-fecha").value,
+        // Un recurrente no tiene fecha concreta: la serie arranca HOY y se repite
+        // en los días marcados. Un evento normal sí usa el día elegido.
+        fecha: seRepite ? isoHoy() : $("campo-fecha").value,
         hora: $("campo-hora").value,
         categoria: $("campo-categoria").value,
         notas: $("campo-notas").value.trim() || null,
