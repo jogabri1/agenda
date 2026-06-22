@@ -79,10 +79,10 @@ create policy "eventos_propios" on public.events
 -- que salta la RLS, así que pueden leer los eventos de TODOS los usuarios y
 -- enviar a cada uno a su propio chat_id (guardado en su perfil).
 
--- ───────── Eventos RECURRENTES ("se repite cada N días") ─────────
--- Una sola fila representa toda la serie. `fecha` es la primera ocurrencia (ancla);
--- el sistema calcula sobre la marcha qué días "toca" (no se materializan filas).
-alter table public.events add column if not exists repetir_cada  int;   -- NULL = no se repite; 1 = diario, 2 = cada 2 días…
+-- ───────── Eventos RECURRENTES (por DÍAS DE LA SEMANA) ─────────
+-- Una sola fila representa toda la serie. `fecha` es el día de INICIO (no se repite
+-- antes); el sistema calcula sobre la marcha qué días "toca" (no se materializan filas).
+alter table public.events add column if not exists repetir_dias  text;  -- NULL = no se repite; si no: días ISO separados por coma ("1,3,5" = lun, mié, vie; 1=lun … 7=dom)
 alter table public.events add column if not exists repetir_hasta date;  -- NULL = sin fin
 
 -- Registro de avisos ya enviados de eventos RECURRENTES. Como una fila recurrente

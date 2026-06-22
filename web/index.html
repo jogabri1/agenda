@@ -112,23 +112,25 @@
         </div>
       </div>
 
-      <!-- Repetición: convierte el evento en recurrente "cada N días" -->
+      <!-- Repetición: el evento se repite en los días de la semana marcados -->
       <label class="check-pendiente" id="repetir-toggle">
         <input type="checkbox" id="campo-repite" />
         <span>🔁 Se repite</span>
       </label>
 
       <div id="repetir-campos" hidden>
-        <div class="fila">
-          <div>
-            <label for="campo-repetir-cada">Cada (días)</label>
-            <input id="campo-repetir-cada" type="number" min="1" step="1" value="1" inputmode="numeric" />
-          </div>
-          <div>
-            <label for="campo-repetir-hasta">Hasta (opcional)</label>
-            <input id="campo-repetir-hasta" type="date" />
-          </div>
+        <label>Repetir los días</label>
+        <div id="dias-semana" class="dias-semana">
+          <button type="button" class="dia" data-dia="1">L</button>
+          <button type="button" class="dia" data-dia="2">M</button>
+          <button type="button" class="dia" data-dia="3">X</button>
+          <button type="button" class="dia" data-dia="4">J</button>
+          <button type="button" class="dia" data-dia="5">V</button>
+          <button type="button" class="dia" data-dia="6">S</button>
+          <button type="button" class="dia" data-dia="7">D</button>
         </div>
+        <label for="campo-repetir-hasta">Hasta (opcional)</label>
+        <input id="campo-repetir-hasta" type="date" />
       </div>
 
       <label for="campo-categoria">Tipo</label>

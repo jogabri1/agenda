@@ -1,22 +1,24 @@
-// Lógica de eventos RECURRENTES ("se repite cada N días").
-// Una sola fila representa toda la serie: `ev.fecha` es la primera ocurrencia
-// (ancla), `ev.repetir_cada` cada cuántos días se repite (NULL = no se repite)
-// y `ev.repetir_hasta` la última fecha posible (NULL = sin fin).
-// Las fechas se manejan como texto "YYYY-MM-DD" (su orden alfabético coincide
-// con el cronológico). Esta misma lógica se replica en web/app.js (vanilla).
+// Lógica de eventos RECURRENTES por DÍAS DE LA SEMANA.
+// Una sola fila representa toda la serie: `ev.fecha` es el día de INICIO (no se
+// repite antes), `ev.repetir_dias` son los días en que se repite (texto con
+// números ISO separados por coma: 1=lunes … 7=domingo; NULL = no se repite) y
+// `ev.repetir_hasta` la última fecha posible (NULL = sin fin). Las fechas se
+// manejan como texto "YYYY-MM-DD". Esta misma lógica se replica en web/app.js.
 
 const { DateTime } = require("luxon");
 
+// Días de la semana en que se repite, como conjunto de números (1=lun … 7=dom).
+function diasSet(ev) {
+  return new Set((ev.repetir_dias || "").split(",").map((s) => parseInt(s, 10)).filter(Boolean));
+}
+
 // ¿El evento ocurre en la fecha dada ("YYYY-MM-DD")?
 function ocurreEn(ev, fechaISO) {
-  if (!ev.fecha || fechaISO < ev.fecha) return false;             // antes de la ancla
+  if (!ev.fecha || fechaISO < ev.fecha) return false;                // antes del inicio
   if (ev.repetir_hasta && fechaISO > ev.repetir_hasta) return false; // pasado el fin
-  if (!ev.repetir_cada) return fechaISO === ev.fecha;            // evento único
-  // Recurrente: cuenta los días enteros desde la ancla (UTC evita líos de horario de verano).
-  const desde = DateTime.fromISO(ev.fecha, { zone: "utc" });
-  const hasta = DateTime.fromISO(fechaISO, { zone: "utc" });
-  const dias = Math.round(hasta.diff(desde, "days").days);
-  return dias % ev.repetir_cada === 0;
+  if (!ev.repetir_dias) return fechaISO === ev.fecha;               // evento único
+  const diaSemana = DateTime.fromISO(fechaISO, { zone: "utc" }).weekday; // 1=lun … 7=dom
+  return diasSet(ev).has(diaSemana);
 }
 
 // Fechas ("YYYY-MM-DD") en que el evento ocurre dentro de [desdeISO, hastaISO].

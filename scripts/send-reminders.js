@@ -47,17 +47,17 @@ async function main() {
   const { data: unicos, error } = await db
     .from("events")
     .select("*")
-    .is("repetir_cada", null)
+    .is("repetir_dias", null)
     .in("fecha", [hoy, manana])
     .or("sent_1h.eq.false,sent_20m.eq.false,sent_now.eq.false");
   if (error) throw error;
 
-  // Eventos RECURRENTES activos (su ancla puede ser muy anterior; el control de
-  // "ya avisado" va en la tabla reminders_log, no en las casillas sent_*).
+  // Eventos RECURRENTES activos (su día de inicio puede ser muy anterior; el control
+  // de "ya avisado" va en la tabla reminders_log, no en las casillas sent_*).
   const { data: recurrentes, error: errR } = await db
     .from("events")
     .select("*")
-    .not("repetir_cada", "is", null)
+    .not("repetir_dias", "is", null)
     .or(`repetir_hasta.is.null,repetir_hasta.gte.${hoy}`);
   if (errR) throw errR;
 

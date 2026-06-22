@@ -16,7 +16,7 @@ const NEXT_DAYS = parseInt(process.env.NEXT_DAYS || "3", 10);
 function lineaEvento(ev) {
   // Hora y título en NEGRITA (<b>); el resto del texto del usuario se escapa.
   // 🔁 marca los eventos que se repiten.
-  const rep = ev.repetir_cada ? " 🔁" : "";
+  const rep = ev.repetir_dias ? " 🔁" : "";
   let linea = `• <b>${(ev.hora || "").slice(0, 5)}</b> — <b>${esc(ev.titulo)}</b>${rep}`;
   if (ev.notas) linea += `\n   📝 ${esc(ev.notas)}`;
   return linea;
@@ -73,7 +73,7 @@ async function main() {
       .from("events")
       .select("*")
       .eq("user_id", perfil.id)
-      .is("repetir_cada", null)
+      .is("repetir_dias", null)
       .gte("fecha", hoy)
       .lte("fecha", hasta)
       .order("fecha", { ascending: true })
@@ -86,7 +86,7 @@ async function main() {
       .from("events")
       .select("*")
       .eq("user_id", perfil.id)
-      .not("repetir_cada", "is", null)
+      .not("repetir_dias", "is", null)
       .or(`repetir_hasta.is.null,repetir_hasta.gte.${hoy}`);
     if (errR) throw errR;
 

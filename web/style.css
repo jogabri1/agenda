@@ -124,8 +124,28 @@ body { padding: 0; }
   border-radius: 999px;
   margin-top: 6px;
 }
-/* Distintivo de evento recurrente ("🔁 cada N días") */
+/* Distintivo de evento recurrente ("🔁 L·X·V") */
 .badge-rep { margin-left: 6px; color: #92400e; background: #fffbeb; }
+
+/* Selector de días de la semana (formulario de repetición) */
+.dias-semana { display: flex; gap: 6px; margin-top: 6px; }
+.dias-semana .dia {
+  flex: 1;
+  padding: 11px 0;
+  border: 1px solid var(--borde);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--texto-suave);
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.dias-semana .dia.on {
+  background: var(--acento);
+  border-color: var(--acento);
+  color: #fff;
+}
+.dias-semana .dia:active { transform: scale(0.95); }
 .evento .acciones-evento { display: flex; flex-direction: column; gap: 6px; }
 .icono-btn {
   border: none;

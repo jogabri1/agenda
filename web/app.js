@@ -51,24 +51,24 @@ function escapar(s) {
   return div.innerHTML;
 }
 
-// ───────── Recurrencia ("se repite cada N días") ─────────
+// ───────── Recurrencia (por días de la semana) ─────────
 // Cuántos días hacia adelante se expanden los eventos recurrentes en la lista.
 const HORIZONTE_DIAS = 30;
+const INI_DIA = { 1: "L", 2: "M", 3: "X", 4: "J", 5: "V", 6: "S", 7: "D" };
 
-// Días enteros entre dos fechas ISO "YYYY-MM-DD" (en UTC, para no liarnos con el
-// horario de verano). Misma lógica que scripts/lib/recurrencia.js.
-function diasEntre(aISO, bISO) {
-  const [ay, am, ad] = aISO.split("-").map(Number);
-  const [by, bm, bd] = bISO.split("-").map(Number);
-  return Math.round((Date.UTC(by, bm - 1, bd) - Date.UTC(ay, am - 1, ad)) / 86400000);
+// Día de la semana de una fecha ISO "YYYY-MM-DD" como número 1=lun … 7=dom.
+function diaSemanaISO(fechaISO) {
+  const [y, m, d] = fechaISO.split("-").map(Number);
+  const dow = new Date(y, m - 1, d).getDay(); // 0=dom … 6=sáb
+  return dow === 0 ? 7 : dow;
 }
 
-// ¿El evento ocurre en la fecha dada ("YYYY-MM-DD")?
+// ¿El evento ocurre en la fecha dada ("YYYY-MM-DD")? (igual que scripts/lib/recurrencia.js)
 function ocurreEn(ev, fechaISO) {
-  if (!ev.fecha || fechaISO < ev.fecha) return false;                 // antes de la ancla
+  if (!ev.fecha || fechaISO < ev.fecha) return false;                 // antes del inicio
   if (ev.repetir_hasta && fechaISO > ev.repetir_hasta) return false;  // pasado el fin
-  if (!ev.repetir_cada) return fechaISO === ev.fecha;                 // evento único
-  return diasEntre(ev.fecha, fechaISO) % ev.repetir_cada === 0;       // recurrente cada N días
+  if (!ev.repetir_dias) return fechaISO === ev.fecha;                 // evento único
+  return ev.repetir_dias.split(",").map(Number).includes(diaSemanaISO(fechaISO));
 }
 
 // Fechas visibles de un evento recurrente, desde hoy hasta HORIZONTE_DIAS.
@@ -86,9 +86,23 @@ function ocurrenciasVisibles(ev) {
   return out;
 }
 
-// Texto corto de la regla: "cada día" / "cada N días".
-function textoRepeticion(n) {
-  return n === 1 ? "cada día" : `cada ${n} días`;
+// Texto corto de la regla para mostrar: "todos los días", "L a V" o "L·X·V".
+function textoRepeticion(repetirDias) {
+  const dias = (repetirDias || "").split(",").map(Number).filter(Boolean).sort((a, b) => a - b);
+  if (dias.length === 7) return "todos los días";
+  if (dias.length === 5 && dias.every((d, i) => d === i + 1)) return "L a V";
+  return dias.map((d) => INI_DIA[d]).join("·");
+}
+
+// Lee/escribe los botones de día del formulario ("1,3,5").
+function getDias() {
+  return [...document.querySelectorAll("#dias-semana .dia.on")].map((b) => b.dataset.dia).join(",");
+}
+function setDias(repetirDias) {
+  const sel = new Set((repetirDias || "").split(",").filter(Boolean));
+  for (const b of document.querySelectorAll("#dias-semana .dia")) {
+    b.classList.toggle("on", sel.has(b.dataset.dia));
+  }
 }
 
 // ───────── Banner de estado ─────────
@@ -238,11 +252,11 @@ async function guardarTelegram(e) {
 // ═══════════════ EVENTOS ═══════════════
 async function cargar() {
   // Traemos los eventos de hoy en adelante, los pendientes (sin fecha) y TODOS los
-  // recurrentes (su fecha-ancla puede ser anterior a hoy, pero siguen activos).
+  // recurrentes (su día de inicio puede ser anterior a hoy, pero siguen activos).
   const { data, error } = await db
     .from("events")
     .select("*")
-    .or(`fecha.gte.${isoHoy()},pendiente.is.true,repetir_cada.not.is.null`)
+    .or(`fecha.gte.${isoHoy()},pendiente.is.true,repetir_dias.not.is.null`)
     .order("fecha", { ascending: true })
     .order("hora", { ascending: true });
 
@@ -258,12 +272,12 @@ function pintar(eventos) {
   lista.innerHTML = "";
 
   const pendientes = eventos.filter((ev) => ev.pendiente);
-  const unicos = eventos.filter((ev) => !ev.pendiente && !ev.repetir_cada);
-  const recurrentes = eventos.filter((ev) => !ev.pendiente && ev.repetir_cada);
+  const unicos = eventos.filter((ev) => !ev.pendiente && !ev.repetir_dias);
+  const recurrentes = eventos.filter((ev) => !ev.pendiente && ev.repetir_dias);
 
-  // Cada recurrente se expande en sus ocurrencias visibles. Guardamos la fecha-ancla
-  // original en `_ancla` para que al editar/borrar se opere sobre la serie, no sobre
-  // el día concreto que se está viendo.
+  // Cada recurrente se expande en sus ocurrencias visibles. Guardamos la fecha de
+  // inicio original en `_ancla` para que al editar/borrar se opere sobre la serie,
+  // no sobre el día concreto que se está viendo.
   const expandidos = [];
   for (const ev of recurrentes) {
     for (const f of ocurrenciasVisibles(ev)) expandidos.push({ ...ev, fecha: f, _ancla: ev.fecha });
@@ -308,7 +322,7 @@ function tarjeta(ev) {
   card.className = "evento";
   const notasHtml = ev.notas ? `<div class="notas">${escapar(ev.notas)}</div>` : "";
   const badge = ev.categoria ? `<span class="badge">${escapar(ev.categoria)}</span>` : "";
-  const badgeRep = ev.repetir_cada ? `<span class="badge badge-rep">🔁 ${textoRepeticion(ev.repetir_cada)}</span>` : "";
+  const badgeRep = ev.repetir_dias ? `<span class="badge badge-rep">🔁 ${textoRepeticion(ev.repetir_dias)}</span>` : "";
   const horaTxt = ev.pendiente ? "📌" : horaCorta(ev.hora);
   card.innerHTML = `
     <div class="hora${ev.pendiente ? " pend" : ""}">${horaTxt}</div>
@@ -339,13 +353,14 @@ function abrirFormulario(ev) {
     $("campo-categoria").value = ev.categoria || "reunión";
     $("campo-notas").value = ev.notas || "";
     $("campo-pendiente").checked = !!ev.pendiente;
-    $("campo-repite").checked = !!ev.repetir_cada;
-    if (ev.repetir_cada) $("campo-repetir-cada").value = ev.repetir_cada;
+    $("campo-repite").checked = !!ev.repetir_dias;
+    setDias(ev.repetir_dias);
     $("campo-repetir-hasta").value = ev.repetir_hasta || "";
   } else {
     $("campo-fecha").value = isoHoy();
     $("campo-pendiente").checked = false;
     $("campo-repite").checked = false;
+    setDias("");
   }
   aplicarModoPendiente(); // apaga/enciende los campos según los interruptores
   $("sheet").hidden = false;
@@ -384,14 +399,20 @@ async function guardarEvento(e) {
   const esPendiente = $("campo-pendiente").checked;
   const seRepite = !esPendiente && $("campo-repite").checked;
 
-  // Regla de repetición: NULL si no se repite; si no, "cada N días" (N ≥ 1) y una
-  // fecha de fin opcional ("hasta").
-  const repetirCada = seRepite ? Math.max(1, parseInt($("campo-repetir-cada").value, 10) || 1) : null;
+  // Regla de repetición: NULL si no se repite; si no, los días de la semana
+  // marcados ("1,3,5") y una fecha de fin opcional ("hasta").
+  const repetirDias = seRepite ? getDias() : null;
   const repetirHasta = seRepite && $("campo-repetir-hasta").value ? $("campo-repetir-hasta").value : null;
+
+  // Si activó "se repite" pero no marcó ningún día, no se puede crear la serie.
+  if (seRepite && !repetirDias) {
+    alert("Elige al menos un día de la semana para que el evento se repita.");
+    return;
+  }
 
   // Un "pendiente" solo lleva título (sin fecha, hora, tipo, notas ni repetición).
   const datos = esPendiente
-    ? { titulo: $("campo-titulo").value.trim(), pendiente: true, fecha: null, hora: null, categoria: null, notas: null, repetir_cada: null, repetir_hasta: null }
+    ? { titulo: $("campo-titulo").value.trim(), pendiente: true, fecha: null, hora: null, categoria: null, notas: null, repetir_dias: null, repetir_hasta: null }
     : {
         titulo: $("campo-titulo").value.trim(),
         pendiente: false,
@@ -399,7 +420,7 @@ async function guardarEvento(e) {
         hora: $("campo-hora").value,
         categoria: $("campo-categoria").value,
         notas: $("campo-notas").value.trim() || null,
-        repetir_cada: repetirCada,
+        repetir_dias: repetirDias,
         repetir_hasta: repetirHasta,
       };
 
@@ -447,7 +468,7 @@ async function guardarEvento(e) {
 
 async function borrar(ev) {
   // Como un recurrente es una sola fila, borrarlo elimina TODA la serie: lo avisamos.
-  const msg = ev.repetir_cada
+  const msg = ev.repetir_dias
     ? `¿Borrar "${ev.titulo}"?\nSe eliminarán TODAS sus repeticiones (toda la serie).`
     : `¿Borrar "${ev.titulo}"?`;
   if (!confirm(msg)) return;
@@ -487,5 +508,10 @@ $("form-evento").onsubmit = guardarEvento;
 $("campo-pendiente").onchange = aplicarModoPendiente;
 $("campo-repite").onchange = aplicarModoRepite;
 $("form-telegram").onsubmit = guardarTelegram;
+
+// Botones de día de la semana: alternan seleccionado/no seleccionado al pulsar.
+for (const b of document.querySelectorAll("#dias-semana .dia")) {
+  b.onclick = () => b.classList.toggle("on");
+}
 
 init();
