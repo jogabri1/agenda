@@ -377,5 +377,7 @@ form input:disabled, form select:disabled, form textarea:disabled {
 }
 .pendiente-item .acciones-pend { flex: 0 0 auto; display: flex; gap: 2px; }
 .pendiente-item .icono-btn { font-size: 16px; padding: 4px; }
+/* Meta de una serie recurrente (días · hora) dentro de su línea compacta */
+.pendiente-item .r-meta { margin-left: 4px; color: var(--texto-suave); font-weight: 600; font-size: 13px; }
 /* El icono 📌 ocupa el sitio de la hora en las tarjetas de pendientes */
 .evento .hora.pend { font-size: 18px; }

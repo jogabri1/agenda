@@ -17,6 +17,7 @@ let usuario = null;
 let perfil = null;
 let modoRegistro = false;
 let pendientesAbiertos = false; // la sección de pendientes arranca plegada (no estorba)
+let repitenAbiertos = false;    // la sección de eventos que se repiten, también plegada
 
 const $ = (id) => document.getElementById(id);
 
@@ -53,39 +54,7 @@ function escapar(s) {
 }
 
 // ───────── Recurrencia (por días de la semana) ─────────
-// Cuántos días hacia adelante se expanden los eventos recurrentes en la lista.
-const HORIZONTE_DIAS = 30;
 const INI_DIA = { 1: "L", 2: "M", 3: "X", 4: "J", 5: "V", 6: "S", 7: "D" };
-
-// Día de la semana de una fecha ISO "YYYY-MM-DD" como número 1=lun … 7=dom.
-function diaSemanaISO(fechaISO) {
-  const [y, m, d] = fechaISO.split("-").map(Number);
-  const dow = new Date(y, m - 1, d).getDay(); // 0=dom … 6=sáb
-  return dow === 0 ? 7 : dow;
-}
-
-// ¿El evento ocurre en la fecha dada ("YYYY-MM-DD")? (igual que scripts/lib/recurrencia.js)
-function ocurreEn(ev, fechaISO) {
-  if (!ev.fecha || fechaISO < ev.fecha) return false;                 // antes del inicio
-  if (ev.repetir_hasta && fechaISO > ev.repetir_hasta) return false;  // pasado el fin
-  if (!ev.repetir_dias) return fechaISO === ev.fecha;                 // evento único
-  return ev.repetir_dias.split(",").map(Number).includes(diaSemanaISO(fechaISO));
-}
-
-// Fechas visibles de un evento recurrente, desde hoy hasta HORIZONTE_DIAS.
-function ocurrenciasVisibles(ev) {
-  const out = [];
-  const base = new Date();
-  base.setHours(0, 0, 0, 0);
-  for (let i = 0; i <= HORIZONTE_DIAS; i++) {
-    const d = new Date(base);
-    d.setDate(base.getDate() + i);
-    const iso = isoDe(d);
-    if (ev.repetir_hasta && iso > ev.repetir_hasta) break; // ya no vuelve a ocurrir
-    if (ocurreEn(ev, iso)) out.push(iso);
-  }
-  return out;
-}
 
 // Texto corto de la regla para mostrar: "todos los días", "L a V" o "L·X·V".
 function textoRepeticion(repetirDias) {
@@ -276,48 +245,28 @@ function pintar(eventos) {
   const unicos = eventos.filter((ev) => !ev.pendiente && !ev.repetir_dias);
   const recurrentes = eventos.filter((ev) => !ev.pendiente && ev.repetir_dias);
 
-  // Cada recurrente se expande en sus ocurrencias visibles. Guardamos la fecha de
-  // inicio original en `_ancla` para que al editar/borrar se opere sobre la serie,
-  // no sobre el día concreto que se está viendo.
-  const expandidos = [];
-  for (const ev of recurrentes) {
-    for (const f of ocurrenciasVisibles(ev)) expandidos.push({ ...ev, fecha: f, _ancla: ev.fecha });
-  }
-
-  // Eventos con fecha = únicos + ocurrencias recurrentes, ordenados por fecha y hora.
-  const conFecha = [...unicos, ...expandidos].sort(
+  // En la agenda por días solo van los eventos ÚNICOS (con su fecha propia). Los
+  // recurrentes NO se expanden por día: viven en su propia sección plegable, para
+  // no llenar la vista. Ordenamos los únicos por fecha y hora.
+  const conFecha = [...unicos].sort(
     (a, b) => a.fecha.localeCompare(b.fecha) || horaCorta(a.hora).localeCompare(horaCorta(b.hora))
   );
 
-  if (pendientes.length === 0 && conFecha.length === 0) {
+  if (pendientes.length === 0 && recurrentes.length === 0 && conFecha.length === 0) {
     lista.innerHTML = '<p class="vacio">No hay nada en tu agenda todavía.<br>Pulsa “+ Nuevo” para empezar.</p>';
     return;
   }
 
-  // Pendientes (sin fecha) arriba del todo, en una sección PLEGABLE: por defecto
-  // cerrada (solo el título con el número) para que no ocupe espacio. Al tocar se
-  // despliega como lista compacta.
+  // Secciones plegables (cerradas por defecto, no estorban): pendientes sin fecha y
+  // eventos que se repiten (una línea por serie, no por día).
   if (pendientes.length > 0) {
-    const h = document.createElement("button");
-    h.type = "button";
-    h.className = "grupo-fecha pendientes toggle-pendientes";
-    h.innerHTML = `<span>📌 Pendientes (${pendientes.length})</span><span class="flecha">${pendientesAbiertos ? "▾" : "▸"}</span>`;
-    lista.appendChild(h);
-
-    const cont = document.createElement("div");
-    cont.className = "pendientes-cont";
-    cont.hidden = !pendientesAbiertos;
-    for (const ev of pendientes) cont.appendChild(tarjeta(ev));
-    lista.appendChild(cont);
-
-    h.onclick = () => {
-      pendientesAbiertos = !pendientesAbiertos;
-      cont.hidden = !pendientesAbiertos;
-      h.querySelector(".flecha").textContent = pendientesAbiertos ? "▾" : "▸";
-    };
+    seccionPlegable("📌 Pendientes", pendientes, () => pendientesAbiertos, (v) => (pendientesAbiertos = v), tarjeta);
+  }
+  if (recurrentes.length > 0) {
+    seccionPlegable("🔁 Se repiten", recurrentes, () => repitenAbiertos, (v) => (repitenAbiertos = v), tarjetaRecurrente);
   }
 
-  // Eventos con fecha, agrupados por día.
+  // Eventos con fecha (únicos), agrupados por día.
   let fechaActual = null;
   for (const ev of conFecha) {
     if (ev.fecha !== fechaActual) {
@@ -332,6 +281,29 @@ function pintar(eventos) {
   }
 }
 
+// Crea una sección plegable: cabecera con contador + lista compacta que se abre/cierra.
+function seccionPlegable(titulo, items, getAbierto, setAbierto, render) {
+  const lista = $("lista");
+  const h = document.createElement("button");
+  h.type = "button";
+  h.className = "grupo-fecha pendientes toggle-pendientes";
+  h.innerHTML = `<span>${titulo} (${items.length})</span><span class="flecha">${getAbierto() ? "▾" : "▸"}</span>`;
+  lista.appendChild(h);
+
+  const cont = document.createElement("div");
+  cont.className = "pendientes-cont";
+  cont.hidden = !getAbierto();
+  for (const ev of items) cont.appendChild(render(ev));
+  lista.appendChild(cont);
+
+  h.onclick = () => {
+    const nuevo = !getAbierto();
+    setAbierto(nuevo);
+    cont.hidden = !nuevo;
+    h.querySelector(".flecha").textContent = nuevo ? "▾" : "▸";
+  };
+}
+
 // Tarjeta compacta (una línea) para un pendiente: 📌 título + acciones.
 function tarjetaPendiente(ev) {
   const card = document.createElement("div");
@@ -339,6 +311,23 @@ function tarjetaPendiente(ev) {
   card.innerHTML = `
     <span class="pin">📌</span>
     <span class="texto">${escapar(ev.titulo)}</span>
+    <span class="acciones-pend">
+      <button class="icono-btn" data-accion="editar" title="Editar">✏️</button>
+      <button class="icono-btn" data-accion="borrar" title="Borrar">🗑️</button>
+    </span>`;
+  card.querySelector('[data-accion="editar"]').onclick = () => abrirFormulario(ev);
+  card.querySelector('[data-accion="borrar"]').onclick = () => borrar(ev);
+  return card;
+}
+
+// Tarjeta compacta (una línea) para una serie recurrente: 🔁 título + días·hora.
+function tarjetaRecurrente(ev) {
+  const card = document.createElement("div");
+  card.className = "pendiente-item";
+  const meta = `${textoRepeticion(ev.repetir_dias)} · ${horaCorta(ev.hora)}`;
+  card.innerHTML = `
+    <span class="pin">🔁</span>
+    <span class="texto"><b>${escapar(ev.titulo)}</b> <span class="r-meta">${meta}</span></span>
     <span class="acciones-pend">
       <button class="icono-btn" data-accion="editar" title="Editar">✏️</button>
       <button class="icono-btn" data-accion="borrar" title="Borrar">🗑️</button>
