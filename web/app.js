@@ -16,6 +16,7 @@ let db = null;
 let usuario = null;
 let perfil = null;
 let modoRegistro = false;
+let pendientesAbiertos = false; // la sección de pendientes arranca plegada (no estorba)
 
 const $ = (id) => document.getElementById(id);
 
@@ -293,13 +294,27 @@ function pintar(eventos) {
     return;
   }
 
-  // Pendientes (sin fecha) arriba del todo.
+  // Pendientes (sin fecha) arriba del todo, en una sección PLEGABLE: por defecto
+  // cerrada (solo el título con el número) para que no ocupe espacio. Al tocar se
+  // despliega como lista compacta.
   if (pendientes.length > 0) {
-    const h = document.createElement("div");
-    h.className = "grupo-fecha pendientes";
-    h.textContent = "📌 Pendientes (sin fecha)";
+    const h = document.createElement("button");
+    h.type = "button";
+    h.className = "grupo-fecha pendientes toggle-pendientes";
+    h.innerHTML = `<span>📌 Pendientes (${pendientes.length})</span><span class="flecha">${pendientesAbiertos ? "▾" : "▸"}</span>`;
     lista.appendChild(h);
-    for (const ev of pendientes) lista.appendChild(tarjeta(ev));
+
+    const cont = document.createElement("div");
+    cont.className = "pendientes-cont";
+    cont.hidden = !pendientesAbiertos;
+    for (const ev of pendientes) cont.appendChild(tarjeta(ev));
+    lista.appendChild(cont);
+
+    h.onclick = () => {
+      pendientesAbiertos = !pendientesAbiertos;
+      cont.hidden = !pendientesAbiertos;
+      h.querySelector(".flecha").textContent = pendientesAbiertos ? "▾" : "▸";
+    };
   }
 
   // Eventos con fecha, agrupados por día.
@@ -317,7 +332,24 @@ function pintar(eventos) {
   }
 }
 
+// Tarjeta compacta (una línea) para un pendiente: 📌 título + acciones.
+function tarjetaPendiente(ev) {
+  const card = document.createElement("div");
+  card.className = "pendiente-item";
+  card.innerHTML = `
+    <span class="pin">📌</span>
+    <span class="texto">${escapar(ev.titulo)}</span>
+    <span class="acciones-pend">
+      <button class="icono-btn" data-accion="editar" title="Editar">✏️</button>
+      <button class="icono-btn" data-accion="borrar" title="Borrar">🗑️</button>
+    </span>`;
+  card.querySelector('[data-accion="editar"]').onclick = () => abrirFormulario(ev);
+  card.querySelector('[data-accion="borrar"]').onclick = () => borrar(ev);
+  return card;
+}
+
 function tarjeta(ev) {
+  if (ev.pendiente) return tarjetaPendiente(ev);
   const card = document.createElement("div");
   card.className = "evento";
   const notasHtml = ev.notas ? `<div class="notas">${escapar(ev.notas)}</div>` : "";

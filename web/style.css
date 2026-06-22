@@ -337,5 +337,45 @@ form input:disabled, form select:disabled, form textarea:disabled {
 }
 /* Cabecera de la sección de pendientes en la lista */
 .grupo-fecha.pendientes { color: var(--acento-2); }
+
+/* Cabecera plegable: botón a ancho completo con la flecha a la derecha */
+.toggle-pendientes {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: inherit;
+  /* tamaño/peso/mayúsculas/color/margen los hereda de .grupo-fecha.pendientes */
+}
+.toggle-pendientes .flecha { font-size: 11px; }
+
+/* Pendiente compacto: una sola línea (📌 + título + acciones) */
+.pendiente-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--tarjeta);
+  border: 1px solid var(--borde);
+  border-radius: 10px;
+  padding: 8px 10px;
+  margin-bottom: 6px;
+}
+.pendiente-item .pin { flex: 0 0 auto; font-size: 15px; }
+.pendiente-item .texto {
+  flex: 1;
+  min-width: 0; /* permite que el texto largo se recorte en vez de desbordar */
+  font-weight: 600;
+  font-size: 15px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pendiente-item .acciones-pend { flex: 0 0 auto; display: flex; gap: 2px; }
+.pendiente-item .icono-btn { font-size: 16px; padding: 4px; }
 /* El icono 📌 ocupa el sitio de la hora en las tarjetas de pendientes */
 .evento .hora.pend { font-size: 18px; }
