@@ -112,6 +112,25 @@
         </div>
       </div>
 
+      <!-- Repetición: convierte el evento en recurrente "cada N días" -->
+      <label class="check-pendiente" id="repetir-toggle">
+        <input type="checkbox" id="campo-repite" />
+        <span>🔁 Se repite</span>
+      </label>
+
+      <div id="repetir-campos" hidden>
+        <div class="fila">
+          <div>
+            <label for="campo-repetir-cada">Cada (días)</label>
+            <input id="campo-repetir-cada" type="number" min="1" step="1" value="1" inputmode="numeric" />
+          </div>
+          <div>
+            <label for="campo-repetir-hasta">Hasta (opcional)</label>
+            <input id="campo-repetir-hasta" type="date" />
+          </div>
+        </div>
+      </div>
+
       <label for="campo-categoria">Tipo</label>
       <select id="campo-categoria">
         <option value="reunión">Reunión</option>
@@ -159,6 +178,6 @@
   <!-- 2) Tus claves (las pegas tú) -->
   <script src="config.js"></script>
   <!-- 3) La lógica de la app (el ?v= fuerza al navegador a bajar la versión nueva) -->
-  <script src="app.js?v=3"></script>
+  <script src="app.js?v=4"></script>
 </body>
 </html>

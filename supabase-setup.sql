@@ -78,3 +78,24 @@ create policy "eventos_propios" on public.events
 -- NOTA: los scripts de avisos (GitHub Actions) usan la clave "service_role",
 -- que salta la RLS, así que pueden leer los eventos de TODOS los usuarios y
 -- enviar a cada uno a su propio chat_id (guardado en su perfil).
+
+-- ───────── Eventos RECURRENTES ("se repite cada N días") ─────────
+-- Una sola fila representa toda la serie. `fecha` es la primera ocurrencia (ancla);
+-- el sistema calcula sobre la marcha qué días "toca" (no se materializan filas).
+alter table public.events add column if not exists repetir_cada  int;   -- NULL = no se repite; 1 = diario, 2 = cada 2 días…
+alter table public.events add column if not exists repetir_hasta date;  -- NULL = sin fin
+
+-- Registro de avisos ya enviados de eventos RECURRENTES. Como una fila recurrente
+-- tiene MUCHAS fechas, las casillas sent_* (una por fila) no bastan: aquí marcamos
+-- una fila por (evento, fecha, franja) para no duplicar ni perder ningún aviso.
+create table if not exists public.reminders_log (
+  event_id uuid not null references public.events(id) on delete cascade,
+  fecha    date not null,
+  franja   text not null,                 -- 'sent_1h' | 'sent_20m' | 'sent_now'
+  sent_at  timestamptz not null default now(),
+  primary key (event_id, fecha, franja)
+);
+
+-- Solo los scripts (clave service_role) la usan; con RLS activa y SIN policies,
+-- ningún cliente autenticado puede leerla ni escribirla.
+alter table public.reminders_log enable row level security;
