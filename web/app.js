@@ -121,6 +121,7 @@ async function init() {
   });
 
   registrarServiceWorker();
+  mostrarVersion();
 }
 
 function renderSesion(session) {
@@ -566,6 +567,24 @@ function registrarServiceWorker() {
   if (window.caches) {
     caches.keys().then((ks) => ks.forEach((k) => caches.delete(k))).catch(() => {});
   }
+}
+
+// Muestra en la barra la versión que cargó la app (la lee del ?v= de su propio
+// <script>). Sirve para saber de un vistazo si un celular está al día.
+function mostrarVersion() {
+  const s = document.querySelector('script[src*="app.js"]');
+  const m = s && s.src.match(/[?&]v=([^&]+)/);
+  const v = m ? m[1] : "?";
+  const bar = document.querySelector(".userbar-acciones");
+  if (!bar) return;
+  let el = document.getElementById("app-version");
+  if (!el) {
+    el = document.createElement("span");
+    el.id = "app-version";
+    el.className = "app-version";
+    bar.insertBefore(el, bar.firstChild);
+  }
+  el.textContent = "v" + v;
 }
 
 // ───────── Conectar la interfaz ─────────
