@@ -18,6 +18,7 @@ let perfil = null;
 let modoRegistro = false;
 let pendientesAbiertos = false; // la sección de pendientes arranca plegada (no estorba)
 let repitenAbiertos = false;    // la sección de eventos que se repiten, también plegada
+let historialAbierto = false;   // la sección de Historial (eventos pasados), también plegada
 
 const $ = (id) => document.getElementById(id);
 
@@ -41,16 +42,28 @@ function horaCorta(hora) {
 function etiquetaFecha(yyyymmdd) {
   const manana = new Date();
   manana.setDate(manana.getDate() + 1);
+  const ayer = new Date();
+  ayer.setDate(ayer.getDate() - 1);
   let txt = fmtDiaLargo.format(fechaLocal(yyyymmdd));
   txt = txt.charAt(0).toUpperCase() + txt.slice(1);
   if (yyyymmdd === isoHoy()) return { txt: "Hoy · " + txt, hoy: true };
   if (yyyymmdd === isoDe(manana)) return { txt: "Mañana · " + txt, hoy: false };
+  if (yyyymmdd === isoDe(ayer)) return { txt: "Ayer · " + txt, hoy: false };
   return { txt, hoy: false };
 }
 function escapar(s) {
   const div = document.createElement("div");
   div.textContent = s;
   return div.innerHTML;
+}
+
+// Cuántos días hacia atrás se conservan en el "Historial" (eventos ya pasados).
+const HISTORIAL_DIAS = 30;
+// Fecha ISO de hace N días (para el límite del historial).
+function isoHaceDias(n) {
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  return isoDe(d);
 }
 
 // ───────── Recurrencia (por días de la semana) ─────────
@@ -221,12 +234,13 @@ async function guardarTelegram(e) {
 
 // ═══════════════ EVENTOS ═══════════════
 async function cargar() {
-  // Traemos los eventos de hoy en adelante, los pendientes (sin fecha) y TODOS los
-  // recurrentes (su día de inicio puede ser anterior a hoy, pero siguen activos).
+  // Traemos los eventos del último mes en adelante (para el Historial), los pendientes
+  // (sin fecha) y TODOS los recurrentes (su día de inicio puede ser anterior, pero
+  // siguen activos). Lo pasado y lo futuro se separan luego en pintar().
   const { data, error } = await db
     .from("events")
     .select("*")
-    .or(`fecha.gte.${isoHoy()},pendiente.is.true,repetir_dias.not.is.null`)
+    .or(`fecha.gte.${isoHaceDias(HISTORIAL_DIAS)},pendiente.is.true,repetir_dias.not.is.null`)
     .order("fecha", { ascending: true })
     .order("hora", { ascending: true });
 
@@ -241,24 +255,26 @@ function pintar(eventos) {
   const lista = $("lista");
   lista.innerHTML = "";
 
+  const hoy = isoHoy();
   const pendientes = eventos.filter((ev) => ev.pendiente);
-  const unicos = eventos.filter((ev) => !ev.pendiente && !ev.repetir_dias);
   const recurrentes = eventos.filter((ev) => !ev.pendiente && ev.repetir_dias);
+  const unicos = eventos.filter((ev) => !ev.pendiente && !ev.repetir_dias);
 
-  // En la agenda por días solo van los eventos ÚNICOS (con su fecha propia). Los
-  // recurrentes NO se expanden por día: viven en su propia sección plegable, para
-  // no llenar la vista. Ordenamos los únicos por fecha y hora.
-  const conFecha = [...unicos].sort(
-    (a, b) => a.fecha.localeCompare(b.fecha) || horaCorta(a.hora).localeCompare(horaCorta(b.hora))
-  );
+  // Eventos únicos de hoy en adelante → agenda por días (orden ascendente).
+  const futuros = unicos
+    .filter((ev) => ev.fecha >= hoy)
+    .sort((a, b) => a.fecha.localeCompare(b.fecha) || horaCorta(a.hora).localeCompare(horaCorta(b.hora)));
+  // Eventos únicos ya pasados → Historial (orden descendente, lo más reciente primero).
+  const historial = unicos
+    .filter((ev) => ev.fecha < hoy)
+    .sort((a, b) => b.fecha.localeCompare(a.fecha) || horaCorta(b.hora).localeCompare(horaCorta(a.hora)));
 
-  if (pendientes.length === 0 && recurrentes.length === 0 && conFecha.length === 0) {
+  if (pendientes.length === 0 && recurrentes.length === 0 && futuros.length === 0 && historial.length === 0) {
     lista.innerHTML = '<p class="vacio">No hay nada en tu agenda todavía.<br>Pulsa “+ Nuevo” para empezar.</p>';
     return;
   }
 
-  // Secciones plegables (cerradas por defecto, no estorban): pendientes sin fecha y
-  // eventos que se repiten (una línea por serie, no por día).
+  // Secciones plegables de arriba: pendientes sin fecha y eventos que se repiten.
   if (pendientes.length > 0) {
     seccionPlegable("📌 Pendientes", pendientes, () => pendientesAbiertos, (v) => (pendientesAbiertos = v), tarjeta);
   }
@@ -266,19 +282,49 @@ function pintar(eventos) {
     seccionPlegable("🔁 Se repiten", recurrentes, () => repitenAbiertos, (v) => (repitenAbiertos = v), tarjetaRecurrente);
   }
 
-  // Eventos con fecha (únicos), agrupados por día.
+  // Agenda por días (eventos únicos de hoy en adelante).
+  agruparPorDia(lista, futuros);
+
+  // Historial (eventos ya pasados del último mes), plegable, al final del todo.
+  if (historial.length > 0) seccionHistorial(historial);
+}
+
+// Pinta una lista de eventos con fecha, agrupados por día (encabezado + tarjetas).
+function agruparPorDia(contenedor, eventos) {
   let fechaActual = null;
-  for (const ev of conFecha) {
+  for (const ev of eventos) {
     if (ev.fecha !== fechaActual) {
       fechaActual = ev.fecha;
       const { txt, hoy } = etiquetaFecha(ev.fecha);
       const h = document.createElement("div");
       h.className = "grupo-fecha" + (hoy ? " hoy" : "");
       h.textContent = txt;
-      lista.appendChild(h);
+      contenedor.appendChild(h);
     }
-    lista.appendChild(tarjeta(ev));
+    contenedor.appendChild(tarjeta(ev));
   }
+}
+
+// Sección "🕘 Historial": eventos ya pasados, plegable (cerrada por defecto) y
+// agrupados por día con su tarjeta completa (para releer las notas y reagendar).
+function seccionHistorial(items) {
+  const lista = $("lista");
+  const h = document.createElement("button");
+  h.type = "button";
+  h.className = "grupo-fecha historial toggle-pendientes";
+  h.innerHTML = `<span>🕘 Historial (${items.length})</span><span class="flecha">${historialAbierto ? "▾" : "▸"}</span>`;
+  lista.appendChild(h);
+
+  const cont = document.createElement("div");
+  cont.hidden = !historialAbierto;
+  agruparPorDia(cont, items);
+  lista.appendChild(cont);
+
+  h.onclick = () => {
+    historialAbierto = !historialAbierto;
+    cont.hidden = !historialAbierto;
+    h.querySelector(".flecha").textContent = historialAbierto ? "▾" : "▸";
+  };
 }
 
 // Crea una sección plegable: cabecera con contador + lista compacta que se abre/cierra.

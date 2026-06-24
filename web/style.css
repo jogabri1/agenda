@@ -337,6 +337,8 @@ form input:disabled, form select:disabled, form textarea:disabled {
 }
 /* Cabecera de la sección de pendientes en la lista */
 .grupo-fecha.pendientes { color: var(--acento-2); }
+/* Cabecera de la sección de Historial (eventos pasados): atenuada */
+.grupo-fecha.historial { color: var(--texto-suave); }
 
 /* Cabecera plegable: botón a ancho completo con la flecha a la derecha */
 .toggle-pendientes {
